@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from collections import namedtuple
+from datetime import datetime
 import unittest
 
 from sqlalchemy import create_engine
@@ -19,6 +21,7 @@ PATH_PREFIX = b'SampleTransfers'
 DEPTH = 1
 COMPLETED = set()
 FILES = False
+TimestampsMock = namedtuple('TimestampsMock', ['path', 'started_timestamp'])
 
 engine = create_engine('sqlite:///:memory:')
 models.Base.metadata.create_all(engine)
@@ -149,3 +152,60 @@ class TestAutomateTransfers(unittest.TestCase):
         path = transfer.get_next_transfer(SS_URL, TS_LOCATION_UUID, PATH_PREFIX, DEPTH, completed, files)
         # Verify
         assert path == b'SampleTransfers/BagTransfer.zip'
+
+    @vcr.use_cassette('fixtures/vcr_cassettes/get_next_transfer_updated_timestamp.yaml')
+    def test_get_next_transfer_updated_timestamp(self):
+        # Set timestamps
+        completed = {b'SampleTransfers/BagTransfer', b'SampleTransfers/CSVmetadata', b'SampleTransfers/DigitizationOutput', b'SampleTransfers/DSpaceExport', b'SampleTransfers/Images', b'SampleTransfers/ISODiskImage', b'SampleTransfers/Multimedia', b'SampleTransfers/OCRImage', b'SampleTransfers/OfficeDocs', b'SampleTransfers/RawCameraImages', b'SampleTransfers/structMapSample'}
+        started_timestamps = [
+            TimestampsMock(b'SampleTransfers/BagTransfer', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/Images', datetime(2010, 1, 1)),
+        ]
+        # Test
+        path = transfer.get_next_transfer(SS_URL, TS_LOCATION_UUID, PATH_PREFIX, DEPTH, completed, FILES, started_timestamps)
+        # Verify
+        assert path == b'SampleTransfers/Images'
+
+    @vcr.use_cassette('fixtures/vcr_cassettes/get_next_transfer_no_new_timestamp.yaml')
+    def test_get_next_transfer_no_new_timestamp(self):
+        # Set timestamps
+        completed = {b'SampleTransfers/BagTransfer', b'SampleTransfers/CSVmetadata', b'SampleTransfers/DigitizationOutput', b'SampleTransfers/DSpaceExport', b'SampleTransfers/Images', b'SampleTransfers/ISODiskImage', b'SampleTransfers/Multimedia', b'SampleTransfers/OCRImage', b'SampleTransfers/OfficeDocs', b'SampleTransfers/RawCameraImages', b'SampleTransfers/structMapSample'}
+        started_timestamps = [
+            TimestampsMock(b'SampleTransfers/BagTransfer', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/CSVmetadata', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/DigitizationOutput', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/DSpaceExport', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/Images', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/ISODiskImage', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/Multimedia', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/OCRImage', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/OfficeDocs', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/RawCameraImages', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/structMapSample', datetime(2020, 1, 1)),
+        ]
+        # Test
+        path = transfer.get_next_transfer(SS_URL, TS_LOCATION_UUID, PATH_PREFIX, DEPTH, completed, FILES, started_timestamps)
+        # Verify
+        assert path is None
+
+    @vcr.use_cassette('fixtures/vcr_cassettes/get_next_transfer_missing_timestamps.yaml')
+    def test_get_next_transfer_missing_timestamps(self):
+        # Set timestamps
+        completed = {b'SampleTransfers/BagTransfer', b'SampleTransfers/CSVmetadata', b'SampleTransfers/DigitizationOutput', b'SampleTransfers/DSpaceExport', b'SampleTransfers/Images', b'SampleTransfers/ISODiskImage', b'SampleTransfers/Multimedia', b'SampleTransfers/OCRImage', b'SampleTransfers/OfficeDocs', b'SampleTransfers/RawCameraImages', b'SampleTransfers/structMapSample'}
+        started_timestamps = [
+            TimestampsMock(b'SampleTransfers/BagTransfer', None),
+            TimestampsMock(b'SampleTransfers/CSVmetadata', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/DigitizationOutput', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/DSpaceExport', None),
+            TimestampsMock(b'SampleTransfers/Images', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/ISODiskImage', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/Multimedia', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/OCRImage', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/OfficeDocs', datetime(2020, 1, 1)),
+            TimestampsMock(b'SampleTransfers/RawCameraImages', None),
+            TimestampsMock(b'SampleTransfers/structMapSample', datetime(2020, 1, 1)),
+        ]
+        # Test
+        path = transfer.get_next_transfer(SS_URL, TS_LOCATION_UUID, PATH_PREFIX, DEPTH, completed, FILES, started_timestamps)
+        # Verify
+        assert path is None
